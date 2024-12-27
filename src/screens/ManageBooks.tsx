@@ -1,28 +1,23 @@
-import React, { useState, useCallback } from 'react';
-import { FlatList, View, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, FlatList, StyleSheet, Alert } from 'react-native';
 import { Button, Card, Text } from 'react-native-paper';
-import { collection, getDocs, doc, deleteDoc } from 'firebase/firestore';
-import { useFocusEffect } from '@react-navigation/native';
-import { db, bookConverter } from '../firebaseConfig';
-import { Book } from '../types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ManageBooks = ({ navigation }: any) => {
-  const [books, setBooks] = useState<Book[]>([]);
+  const [books, setBooks] = useState<any[]>([]);
 
   const fetchBooks = async () => {
     try {
-      const querySnapshot = await getDocs(
-        collection(db, 'books').withConverter(bookConverter)
-      );
-      const booksData = querySnapshot.docs.map(doc => doc.data());
-      setBooks(booksData);
+      const existingBooks = await AsyncStorage.getItem('books');
+      const allBooks = existingBooks ? JSON.parse(existingBooks) : [];
+      setBooks(allBooks);
     } catch (error) {
       console.error('Error fetching books:', error);
       Alert.alert('Error', 'Failed to load books.');
     }
   };
 
-  const handleDeleteBook = async (bookId: string) => {
+  const handleDeleteBook = async (bookId: number) => {
     Alert.alert(
       'Confirm Delete',
       'Are you sure you want to delete this book?',
@@ -33,9 +28,14 @@ const ManageBooks = ({ navigation }: any) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteDoc(doc(db, 'books', bookId));
+              const existingBooks = await AsyncStorage.getItem('books');
+              const books = existingBooks ? JSON.parse(existingBooks) : [];
+
+              const updatedBooks = books.filter((book: any) => book.id !== bookId);
+              await AsyncStorage.setItem('books', JSON.stringify(updatedBooks));
+
               Alert.alert('Success', 'Book deleted successfully!');
-              setBooks(books.filter(book => book.id !== bookId));
+              fetchBooks(); // Listeyi yenile
             } catch (error) {
               console.error('Error deleting book:', error);
               Alert.alert('Error', 'Failed to delete book.');
@@ -46,16 +46,14 @@ const ManageBooks = ({ navigation }: any) => {
     );
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchBooks();
-    }, [])
-  );
+  useEffect(() => {
+    fetchBooks();
+  }, []);
 
   return (
     <FlatList
       data={books}
-      keyExtractor={item => item.id}
+      keyExtractor={(item) => item.id.toString()}
       ListEmptyComponent={() => (
         <View style={styles.emptyContainer}>
           <Text>No books available.</Text>
@@ -63,16 +61,21 @@ const ManageBooks = ({ navigation }: any) => {
       )}
       renderItem={({ item }) => (
         <Card style={styles.card}>
-          <Card.Title title={item.title} subtitle={`Author(s): ${item.authors.join(', ')}`} />
+          <Card.Title title={item.title} subtitle={`Genre: ${item.genre}`} />
           <Card.Content>
+            <Text>Authors: {item.authors.join(', ')}</Text>
             <Text>ISBN: {item.isbn}</Text>
-            <Text>Genre: {item.genre}</Text>
           </Card.Content>
           <Card.Actions>
-            <Button onPress={() => navigation.navigate('EditBook', { bookId: item.id, existingData: item })}>
+            <Button
+              onPress={() => navigation.navigate('EditBook', { bookId: item.id })}
+            >
               Edit
             </Button>
-            <Button onPress={() => handleDeleteBook(item.id)} color="red">
+            <Button
+              onPress={() => handleDeleteBook(item.id)}
+              color="red"
+            >
               Delete
             </Button>
           </Card.Actions>

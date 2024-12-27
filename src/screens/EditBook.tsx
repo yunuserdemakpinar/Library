@@ -1,20 +1,61 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Alert, Image } from 'react-native';
 import { TextInput, Button, Chip } from 'react-native-paper';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
-import { Book } from '../types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 
 const EditBook = ({ route, navigation }: any) => {
-  const { bookId, existingData }: { bookId: string; existingData: Book } = route.params;
+  const { bookId } = route.params; // Düzenlenecek kitabın ID'si
+  const [title, setTitle] = useState<string>('');
+  const [isbn, setIsbn] = useState<string>('');
+  const [authors, setAuthors] = useState<string[]>([]);
+  const [genre, setGenre] = useState<string>('');
+  const [coverUri, setCoverUri] = useState<string | null>(null);
 
+  useEffect(() => {
+    const fetchBook = async () => {
+      try {
+        const existingBooks = await AsyncStorage.getItem('books');
+        const books = existingBooks ? JSON.parse(existingBooks) : [];
+        const book = books.find((b: any) => b.id === bookId);
 
-  const [title, setTitle] = useState(existingData.title);
-  const [isbn, setIsbn] = useState(String(existingData.isbn));
-  const [authors, setAuthors] = useState<string[]>(existingData.authors);
-  const [authorInput, setAuthorInput] = useState('');
-  const [genre, setGenre] = useState(existingData.genre);
-  const [coverUri, setCoverUri] = useState(existingData.coverUri || '');
+        if (book) {
+          setTitle(book.title);
+          setIsbn(book.isbn);
+          setAuthors(book.authors);
+          setGenre(book.genre);
+          setCoverUri(book.coverUri);
+        } else {
+          Alert.alert('Error', 'Book not found.');
+          navigation.goBack();
+        }
+      } catch (error) {
+        console.error('Error fetching book:', error);
+        Alert.alert('Error', 'Failed to load book details.');
+      }
+    };
+
+    fetchBook();
+  }, [bookId, navigation]);
+
+  const pickImage = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission required', 'Media library access is required to pick an image.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setCoverUri(result.assets[0].uri);
+    }
+  };
 
   const handleUpdateBook = async () => {
     if (!title || !isbn || authors.length === 0 || !genre) {
@@ -22,19 +63,18 @@ const EditBook = ({ route, navigation }: any) => {
       return;
     }
 
-    if (!/^\d+$/.test(isbn)) {
-      Alert.alert('Validation Error', 'ISBN must be a valid number.');
-      return;
-    }
-
     try {
-      await updateDoc(doc(db, 'books', bookId), {
-        title,
-        isbn: Number(isbn),
-        authors,
-        genre,
-        coverUri: coverUri || null,
-      });
+      const existingBooks = await AsyncStorage.getItem('books');
+      const books = existingBooks ? JSON.parse(existingBooks) : [];
+
+      const updatedBooks = books.map((book: any) =>
+        book.id === bookId
+          ? { ...book, title, isbn, authors, genre, coverUri }
+          : book
+      );
+
+      await AsyncStorage.setItem('books', JSON.stringify(updatedBooks));
+
       Alert.alert('Success', 'Book updated successfully!');
       navigation.goBack();
     } catch (error) {
@@ -48,35 +88,24 @@ const EditBook = ({ route, navigation }: any) => {
       <TextInput
         label="Title"
         value={title}
-        onChangeText={setTitle}
+        onChangeText={(text) => setTitle(text)}
         style={styles.input}
       />
       <TextInput
         label="ISBN"
         value={isbn}
-        onChangeText={setIsbn}
+        onChangeText={(text) => setIsbn(text)}
         style={styles.input}
-        keyboardType="numeric"
       />
       <View style={styles.authorContainer}>
         <TextInput
           label="Add Author"
-          value={authorInput}
-          onChangeText={setAuthorInput}
+          value=""
+          onSubmitEditing={(event) => {
+            setAuthors([...authors, event.nativeEvent.text.trim()]);
+          }}
           style={[styles.input, { flex: 1 }]}
         />
-        <Button
-          mode="contained"
-          onPress={() => {
-            if (authorInput.trim()) {
-              setAuthors([...authors, authorInput.trim()]);
-              setAuthorInput('');
-            }
-          }}
-          style={{ marginLeft: 10 }}
-        >
-          Add
-        </Button>
       </View>
       <View style={styles.chipContainer}>
         {authors.map((author, index) => (
@@ -88,15 +117,15 @@ const EditBook = ({ route, navigation }: any) => {
       <TextInput
         label="Genre"
         value={genre}
-        onChangeText={setGenre}
+        onChangeText={(text) => setGenre(text)}
         style={styles.input}
       />
-      <TextInput
-        label="Cover URI"
-        value={coverUri}
-        onChangeText={setCoverUri}
-        style={styles.input}
-      />
+      <Button mode="outlined" onPress={pickImage}>
+        {coverUri ? 'Change Cover Image' : 'Pick Cover Image'}
+      </Button>
+      {coverUri && (
+        <Image source={{ uri: coverUri }} style={styles.coverImage} />
+      )}
       <Button mode="contained" onPress={handleUpdateBook} style={styles.button}>
         Update Book
       </Button>
@@ -124,6 +153,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginBottom: 15,
+  },
+  coverImage: {
+    width: '100%',
+    height: 200,
+    marginTop: 10,
+    borderRadius: 8,
   },
 });
 
