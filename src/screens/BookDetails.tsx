@@ -1,20 +1,48 @@
-import React from 'react';
-import { View, StyleSheet, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, Image, Alert } from 'react-native';
 import { Text, Card } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BookDetails = ({ route }: any) => {
-  const { book } = route.params;
+  const { bookId } = route.params; // Görüntülenecek kitabın ID'si
+  const [book, setBook] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchBook = async () => {
+      try {
+        const existingBooks = await AsyncStorage.getItem('books');
+        const books = existingBooks ? JSON.parse(existingBooks) : [];
+        const bookDetails = books.find((b: any) => b.id === bookId);
+
+        if (bookDetails) {
+          setBook(bookDetails);
+        } else {
+          Alert.alert('Error', 'Book not found.');
+        }
+      } catch (error) {
+        console.error('Error fetching book:', error);
+      }
+    };
+
+    fetchBook();
+  }, [bookId]);
+
+  if (!book) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
       <Card style={styles.card}>
-        <Card.Title title={book.title} subtitle={`Author(s): ${book.authors.join(', ')}`} />
+        <Card.Title title={book.title} subtitle={`Genre: ${book.genre}`} />
         <Card.Content>
+          <Text>Authors: {book.authors.join(', ')}</Text>
           <Text>ISBN: {book.isbn}</Text>
-          <Text>Genre: {book.genre}</Text>
         </Card.Content>
-        {book.coverUri && (
+        {book.coverUri ? (
           <Image source={{ uri: book.coverUri }} style={styles.coverImage} />
+        ) : (
+          <Text>No cover image available</Text>
         )}
       </Card>
     </View>

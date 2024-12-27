@@ -2,18 +2,24 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Alert, Image } from 'react-native';
 import { TextInput, Button, Chip } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
-import { collection, addDoc } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const AddBook = ({ navigation }: any) => {
-  const [title, setTitle] = useState('');
-  const [isbn, setIsbn] = useState('');
+const AddBook = ({ navigation, route }: any) => {
+  const { userId } = route.params; // Kullanıcı ID'si
+  const [title, setTitle] = useState<string>('');
+  const [isbn, setIsbn] = useState<string>('');
   const [authors, setAuthors] = useState<string[]>([]);
-  const [authorInput, setAuthorInput] = useState('');
-  const [genre, setGenre] = useState('');
-  const [coverUri, setCoverUri] = useState('');
+  const [authorInput, setAuthorInput] = useState<string>(''); // Yeni state
+  const [genre, setGenre] = useState<string>('');
+  const [coverUri, setCoverUri] = useState<string | null>(null);
 
   const pickImage = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission required', 'Media library access is required to pick an image.');
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -22,46 +28,50 @@ const AddBook = ({ navigation }: any) => {
     });
 
     if (!result.canceled) {
-      setCoverUri(result.assets[0].uri);
+      setCoverUri(result.assets[0].uri); // Seçilen resmin URI'sini kaydet
     }
   };
 
-
-  const resetForm = () => {
-    setTitle('');
-    setIsbn('');
-    setAuthors([]);
-    setAuthorInput('');
-    setGenre('');
-    setCoverUri('');
+  const handleAddAuthor = () => {
+    if (authorInput.trim() === '') {
+      Alert.alert('Validation Error', 'Author name cannot be empty.');
+      return;
+    }
+    setAuthors([...authors, authorInput.trim()]);
+    setAuthorInput(''); // TextInput'u temizle
   };
 
+  const handleRemoveAuthor = (authorToRemove: string) => {
+    setAuthors(authors.filter((author) => author !== authorToRemove));
+  };
 
   const handleAddBook = async () => {
-
-    if (!title || !isbn || authors.length === 0 || !genre || !coverUri) {
+    if (!title || !isbn || authors.length === 0 || !genre) {
       Alert.alert('Validation Error', 'All fields are required.');
       return;
     }
 
-    if (!/^\d+$/.test(isbn)) {
-      Alert.alert('Validation Error', 'ISBN must be a valid number.');
-      return;
-    }
-
     try {
-      await addDoc(collection(db, 'books'), {
+      const existingBooks = await AsyncStorage.getItem('books');
+      const books = existingBooks ? JSON.parse(existingBooks) : [];
+
+      const newBook = {
+        id: books.length + 1,
         title,
         isbn,
         authors,
         genre,
         coverUri,
-        createdAt: new Date().toISOString(),
-      });
+        userId,
+      };
+
+      await AsyncStorage.setItem('books', JSON.stringify([...books, newBook]));
+
       Alert.alert('Success', 'Book added successfully!');
-    } catch (error: any) {
-      console.error('Error adding book:', error.message);
-      Alert.alert('Error', `Failed to add book: ${error.message}`);
+      navigation.goBack();
+    } catch (error) {
+      console.error('Error adding book:', error);
+      Alert.alert('Error', 'Failed to add book.');
     }
   };
 
@@ -70,39 +80,30 @@ const AddBook = ({ navigation }: any) => {
       <TextInput
         label="Title"
         value={title}
-        onChangeText={setTitle}
+        onChangeText={(text) => setTitle(text)}
         style={styles.input}
       />
       <TextInput
         label="ISBN"
         value={isbn}
-        onChangeText={setIsbn}
+        onChangeText={(text) => setIsbn(text)}
         style={styles.input}
-        keyboardType="numeric"
       />
       <View style={styles.authorContainer}>
         <TextInput
           label="Add Author"
           value={authorInput}
-          onChangeText={setAuthorInput}
+          onChangeText={(text) => setAuthorInput(text)}
+          onSubmitEditing={handleAddAuthor} // Enter ile ekleme
           style={[styles.input, { flex: 1 }]}
         />
-        <Button
-          mode="contained"
-          onPress={() => {
-            if (authorInput.trim()) {
-              setAuthors([...authors, authorInput.trim()]);
-              setAuthorInput('');
-            }
-          }}
-          style={{ marginLeft: 10 }}
-        >
+        <Button onPress={handleAddAuthor} style={styles.addButton}>
           Add
         </Button>
       </View>
       <View style={styles.chipContainer}>
         {authors.map((author, index) => (
-          <Chip key={index} onClose={() => setAuthors(authors.filter((a) => a !== author))}>
+          <Chip key={index} onClose={() => handleRemoveAuthor(author)}>
             {author}
           </Chip>
         ))}
@@ -110,15 +111,15 @@ const AddBook = ({ navigation }: any) => {
       <TextInput
         label="Genre"
         value={genre}
-        onChangeText={setGenre}
+        onChangeText={(text) => setGenre(text)}
         style={styles.input}
       />
       <Button mode="outlined" onPress={pickImage}>
         {coverUri ? 'Change Cover Image' : 'Pick Cover Image'}
       </Button>
-      {coverUri ? (
+      {coverUri && (
         <Image source={{ uri: coverUri }} style={styles.coverImage} />
-      ) : null}
+      )}
       <Button mode="contained" onPress={handleAddBook} style={styles.button}>
         Add Book
       </Button>
@@ -142,6 +143,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 15,
   },
+  addButton: {
+    marginLeft: 10,
+  },
   chipContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -150,8 +154,8 @@ const styles = StyleSheet.create({
   coverImage: {
     width: '100%',
     height: 200,
-    marginTop: 15,
-    borderRadius: 10,
+    marginTop: 10,
+    borderRadius: 8,
   },
 });
 

@@ -1,63 +1,50 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { TextInput, Button, Text } from 'react-native-paper';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import bcrypt from 'react-native-bcrypt';
 
 const LoginScreen = ({ navigation }: any) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
 
   const handleLogin = async () => {
-    if (username === 'admin' && password === 'admin123') {
-      navigation.navigate('MainMenu', { role: 'admin' });
+    if (!username || !password) {
+      Alert.alert('Error', 'Please fill in all fields.');
       return;
     }
-
+  
     try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('username', '==', username));
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        Alert.alert('Error', 'Invalid credentials');
-        return;
-      }
-
-      let user: any = null;
-      querySnapshot.forEach((doc) => {
-        user = doc.data() as { password?: string; role?: string };
-      });
-
+      const existingUsers = await AsyncStorage.getItem('users');
+      const users = existingUsers ? JSON.parse(existingUsers) : [];
+  
+      const user = users.find((u: any) => u.username === username);
+  
       if (!user) {
         Alert.alert('Error', 'Invalid credentials');
         return;
       }
-      if (user?.password) {
-        bcrypt.compare(password, user.password, (err, isPasswordValid) => {
-          if (err) {
-            Alert.alert('Error', 'An error occurred while verifying the password.');
-            return;
-          }
-
-          if (!isPasswordValid) {
-            Alert.alert('Error', 'Invalid credentials');
-            return;
-          }
-
-          Alert.alert('Success', 'Logged in successfully!');
-          navigation.navigate('MainMenu', { role: user.role || 'user' });
-        });
-      } else {
-        Alert.alert('Error', 'Password field is missing.');
-      }
-      navigation.navigate('MainMenu', { role: user.role || 'user' });
+  
+      bcrypt.compare(password, user.password, (err, isPasswordValid) => {
+        if (err) {
+          Alert.alert('Error', 'An error occurred while verifying the password.');
+          return;
+        }
+  
+        if (!isPasswordValid) {
+          Alert.alert('Error', 'Invalid credentials');
+          return;
+        }
+  
+        Alert.alert('Success', 'Logged in successfully!');
+        navigation.navigate('MainMenu', { userId: user.id, role: user.role });
+      });
     } catch (error) {
       console.error('Error logging in:', error);
       Alert.alert('Error', 'Failed to log in');
     }
   };
+  
 
   return (
     <View style={styles.container}>

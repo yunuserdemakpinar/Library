@@ -1,39 +1,48 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { TextInput, Button, Text } from 'react-native-paper';
-import { collection, addDoc } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import bcrypt from 'react-native-bcrypt';
 
 const RegisterScreen = ({ navigation }: any) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
 
   const handleRegister = async () => {
     if (!username || !password) {
       Alert.alert('Error', 'Please fill in all fields.');
       return;
     }
-
+  
     try {
-
+      const existingUsers = await AsyncStorage.getItem('users');
+      const users = existingUsers ? JSON.parse(existingUsers) : [];
+  
+      if (users.some((user: any) => user.username === username)) {
+        Alert.alert('Error', 'Username already exists.');
+        return;
+      }
+  
       const salt = bcrypt.genSaltSync(10);
       const hashedPassword = bcrypt.hashSync(password, salt);
-
-      await addDoc(collection(db, 'users'), {
+  
+      const newUser = {
+        id: users.length + 1,
         username,
         password: hashedPassword,
         role: 'user',
-        createdAt: new Date().toISOString(),
-      });
-
+      };
+  
+      await AsyncStorage.setItem('users', JSON.stringify([...users, newUser]));
+  
       Alert.alert('Success', 'User registered successfully!');
       navigation.navigate('Login');
-    } catch (error: any) {
-      console.error('Error registering user:', error.message);
-      Alert.alert('Error', `Failed to register user: ${error.message}`);
+    } catch (error) {
+      console.error('Error saving user:', error);
+      Alert.alert('Error', 'Failed to register user.');
     }
   };
+  
 
   return (
     <View style={styles.container}>
