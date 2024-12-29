@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, FlatList, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { Card, Text } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { checkSession } from '../utils/session';
 const BookList = ({ route, navigation }: any) => {
-  const { userId, role } = route.params; // Kullanıcının ID'si ve rolü
+  const { userId, role } = route.params;
   const [books, setBooks] = useState<any[]>([]);
 
   useEffect(() => {
+    checkSession(navigation);
     const fetchBooks = async () => {
       try {
         const existingBooks = await AsyncStorage.getItem('books');

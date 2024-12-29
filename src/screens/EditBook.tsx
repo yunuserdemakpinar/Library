@@ -3,9 +3,10 @@ import { View, StyleSheet, Alert, Image } from 'react-native';
 import { TextInput, Button, Chip } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
+import { checkSession } from '../utils/session';
 
 const EditBook = ({ route, navigation }: any) => {
-  const { bookId } = route.params; // Düzenlenecek kitabın ID'si
+  const { bookId } = route.params;
   const [title, setTitle] = useState<string>('');
   const [isbn, setIsbn] = useState<string>('');
   const [authors, setAuthors] = useState<string[]>([]);
@@ -13,6 +14,7 @@ const EditBook = ({ route, navigation }: any) => {
   const [coverUri, setCoverUri] = useState<string | null>(null);
 
   useEffect(() => {
+    checkSession(navigation);
     const fetchBook = async () => {
       try {
         const existingBooks = await AsyncStorage.getItem('books');
