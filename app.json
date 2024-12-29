@@ -20,12 +20,19 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff",
         "permissions": [
+    "SYSTEM_ALERT_WINDOW",
     "SYSTEM_ALERT_WINDOW"
   ]
-      }
+      },
+      "package": "com.anonymous.library"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6e24b78a-1343-43c7-8d0c-171b75b0a791"
+      }
   }
+}
 }

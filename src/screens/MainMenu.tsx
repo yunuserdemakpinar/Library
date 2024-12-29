@@ -1,9 +1,20 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { Alert, View, StyleSheet } from 'react-native';
 import { Button, Text } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { checkSession } from '../utils/session';
 
 const MainMenu = ({ route, navigation }: any) => {
   const { userId, role } = route.params;
+  useEffect(() => {
+    checkSession(navigation);
+  }, []);
+
+  const handleLogout = async () => {
+    await AsyncStorage.removeItem('session');
+    Alert.alert('Success', 'Logged out successfully!');
+    navigation.navigate('Login');
+  };
 
   return (
     <View style={styles.container}>
@@ -45,6 +56,9 @@ const MainMenu = ({ route, navigation }: any) => {
           </Button>
         </>
       )}
+      <Button mode="contained" onPress={handleLogout} style={styles.button}>
+        Logout
+      </Button>
     </View>
   );
 };

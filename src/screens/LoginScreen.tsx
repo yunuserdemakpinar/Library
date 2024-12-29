@@ -3,6 +3,7 @@ import { View, StyleSheet, Alert } from 'react-native';
 import { TextInput, Button, Text } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import bcrypt from 'react-native-bcrypt';
+import { v4 as uuidv4 } from 'uuid';
 
 const LoginScreen = ({ navigation }: any) => {
   const [username, setUsername] = useState<string>('');
@@ -16,29 +17,32 @@ const LoginScreen = ({ navigation }: any) => {
   
     try {
       const existingUsers = await AsyncStorage.getItem('users');
+      console.log('Existing Users:', existingUsers);
       const users = existingUsers ? JSON.parse(existingUsers) : [];
-  
+
       const user = users.find((u: any) => u.username === username);
-  
+      console.log('Matched User:', user);
       if (!user) {
         Alert.alert('Error', 'Invalid credentials');
         return;
       }
   
-      bcrypt.compare(password, user.password, (err, isPasswordValid) => {
-        if (err) {
-          Alert.alert('Error', 'An error occurred while verifying the password.');
-          return;
-        }
+      const isPasswordValid = bcrypt.compareSync(password, user.password);
+      console.log('Password Validation:', isPasswordValid); // Şifre doğrulama sonucunu kontrol edin
   
-        if (!isPasswordValid) {
-          Alert.alert('Error', 'Invalid credentials');
-          return;
-        }
+      if (!isPasswordValid) {
+        Alert.alert('Error', 'Invalid credentials');
+        return;
+      }
+  
+      const sessionToken = uuidv4();
+      await AsyncStorage.setItem(
+        'session',
+        JSON.stringify({ userId: user.id, role: user.role, token: sessionToken })
+      );
   
         Alert.alert('Success', 'Logged in successfully!');
-        navigation.navigate('MainMenu', { userId: user.id, role: user.role });
-      });
+        navigation.navigate('MainMenu', { role: user.role });
     } catch (error) {
       console.error('Error logging in:', error);
       Alert.alert('Error', 'Failed to log in');

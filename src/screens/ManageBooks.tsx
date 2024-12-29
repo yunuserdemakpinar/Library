@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, FlatList, StyleSheet, Alert } from 'react-native';
 import { Button, Card, Text } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { checkSession } from '../utils/session';
 
 const ManageBooks = ({ navigation }: any) => {
   const [books, setBooks] = useState<any[]>([]);
@@ -35,7 +36,7 @@ const ManageBooks = ({ navigation }: any) => {
               await AsyncStorage.setItem('books', JSON.stringify(updatedBooks));
 
               Alert.alert('Success', 'Book deleted successfully!');
-              fetchBooks(); // Listeyi yenile
+              fetchBooks();
             } catch (error) {
               console.error('Error deleting book:', error);
               Alert.alert('Error', 'Failed to delete book.');
@@ -47,6 +48,7 @@ const ManageBooks = ({ navigation }: any) => {
   };
 
   useEffect(() => {
+    checkSession(navigation);
     fetchBooks();
   }, []);
 

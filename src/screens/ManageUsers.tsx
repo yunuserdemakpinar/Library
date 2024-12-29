@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, FlatList, StyleSheet, Alert } from 'react-native';
 import { Card, Text, Button } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { checkSession } from '../utils/session';
+import { useNavigation } from '@react-navigation/native';
 
 const ManageUsers = () => {
   const [users, setUsers] = useState<any[]>([]);
-
+  const navigation = useNavigation();
   const fetchUsers = async () => {
     try {
       const existingUsers = await AsyncStorage.getItem('users');
@@ -36,7 +38,7 @@ const ManageUsers = () => {
               await AsyncStorage.setItem('users', JSON.stringify(updatedUsers));
 
               Alert.alert('Success', 'User deleted successfully!');
-              fetchUsers(); // Listeyi yenile
+              fetchUsers();
             } catch (error) {
               console.error('Error deleting user:', error);
               Alert.alert('Error', 'Failed to delete user.');
@@ -48,6 +50,7 @@ const ManageUsers = () => {
   };
 
   useEffect(() => {
+    checkSession(navigation);
     fetchUsers();
   }, []);
 

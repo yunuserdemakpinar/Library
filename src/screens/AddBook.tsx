@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert, Image } from 'react-native';
 import { TextInput, Button, Chip } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { checkSession } from '../utils/session';
 const AddBook = ({ navigation, route }: any) => {
-  const { userId } = route.params; // Kullanıcı ID'si
+  useEffect(() => {
+    checkSession(navigation);
+  }, []);
+  const { userId } = route.params;
   const [title, setTitle] = useState<string>('');
   const [isbn, setIsbn] = useState<string>('');
   const [authors, setAuthors] = useState<string[]>([]);
-  const [authorInput, setAuthorInput] = useState<string>(''); // Yeni state
+  const [authorInput, setAuthorInput] = useState<string>('');
   const [genre, setGenre] = useState<string>('');
   const [coverUri, setCoverUri] = useState<string | null>(null);
 
@@ -28,7 +31,7 @@ const AddBook = ({ navigation, route }: any) => {
     });
 
     if (!result.canceled) {
-      setCoverUri(result.assets[0].uri); // Seçilen resmin URI'sini kaydet
+      setCoverUri(result.assets[0].uri); 
     }
   };
 
@@ -38,7 +41,7 @@ const AddBook = ({ navigation, route }: any) => {
       return;
     }
     setAuthors([...authors, authorInput.trim()]);
-    setAuthorInput(''); // TextInput'u temizle
+    setAuthorInput('');
   };
 
   const handleRemoveAuthor = (authorToRemove: string) => {
@@ -94,7 +97,7 @@ const AddBook = ({ navigation, route }: any) => {
           label="Add Author"
           value={authorInput}
           onChangeText={(text) => setAuthorInput(text)}
-          onSubmitEditing={handleAddAuthor} // Enter ile ekleme
+          onSubmitEditing={handleAddAuthor}
           style={[styles.input, { flex: 1 }]}
         />
         <Button onPress={handleAddAuthor} style={styles.addButton}>

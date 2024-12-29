@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Image, Alert } from 'react-native';
 import { Text, Card } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { checkSession } from '../utils/session';
+import { useNavigation } from '@react-navigation/native';
 
 const BookDetails = ({ route }: any) => {
-  const { bookId } = route.params; // Görüntülenecek kitabın ID'si
+  const { bookId } = route.params; 
   const [book, setBook] = useState<any>(null);
-
+  const navigation = useNavigation();
   useEffect(() => {
+    checkSession(navigation);
     const fetchBook = async () => {
       try {
         const existingBooks = await AsyncStorage.getItem('books');

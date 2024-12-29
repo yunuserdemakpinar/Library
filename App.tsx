@@ -17,7 +17,7 @@ import EditBook from './src/screens/EditBook';
 import RegisterScreen from './src/screens/RegisterScreen';
 import ManageUsers from './src/screens/ManageUsers';
 import bcrypt from 'react-native-bcrypt';
-
+import 'react-native-get-random-values';
 const Stack = createStackNavigator();
 
 const initializeData = async () => {
