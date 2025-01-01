@@ -21,7 +21,8 @@
         "backgroundColor": "#ffffff",
         "permissions": [
     "SYSTEM_ALERT_WINDOW",
-    "SYSTEM_ALERT_WINDOW"
+    "SYSTEM_ALERT_WINDOW",
+    "INTERNET"
   ]
       },
       "package": "com.anonymous.library"

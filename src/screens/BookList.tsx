@@ -3,9 +3,11 @@ import { View, FlatList, StyleSheet, Alert, TouchableOpacity } from 'react-nativ
 import { Card, Text } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { checkSession } from '../utils/session';
+
 const BookList = ({ route, navigation }: any) => {
-  const { userId, role } = route.params;
+  const { userId, role, searchText } = route.params;
   const [books, setBooks] = useState<any[]>([]);
+  const [filteredBooks, setFilteredBooks] = useState<any[]>([]);
 
   useEffect(() => {
     checkSession(navigation);
@@ -18,6 +20,15 @@ const BookList = ({ route, navigation }: any) => {
           role === 'admin' ? allBooks : allBooks.filter((book: any) => book.userId === userId);
 
         setBooks(filteredBooks);
+
+        if (searchText) {
+          const searchResult = filteredBooks.filter((book: any) =>
+            book.title.toLowerCase().includes(searchText.toLowerCase())
+          );
+          setFilteredBooks(searchResult);
+        } else {
+          setFilteredBooks(filteredBooks);
+        }
       } catch (error) {
         console.error('Error fetching books:', error);
         Alert.alert('Error', 'Failed to load books.');
@@ -25,7 +36,7 @@ const BookList = ({ route, navigation }: any) => {
     };
 
     fetchBooks();
-  }, [userId, role]);
+  }, [userId, role, searchText]);
 
   const handleBookPress = (bookId: number) => {
     navigation.navigate('BookDetails', { bookId });
@@ -34,7 +45,7 @@ const BookList = ({ route, navigation }: any) => {
   return (
     <View style={styles.container}>
       <FlatList
-        data={books}
+        data={filteredBooks}
         keyExtractor={(item) => item.id.toString()}
         ListEmptyComponent={() => (
           <View style={styles.emptyContainer}>
